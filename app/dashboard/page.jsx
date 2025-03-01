@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import React, { useState } from "react";
 import EmptyState from "./_components/EmptyState";
+import Link from "next/link";
 
 function Dashboard() {
     const [videoList, setVideoList] = useState([]);
@@ -9,7 +10,8 @@ function Dashboard() {
         <div>
             <div className="flex justify-between items-center">
                 <h2 className="font-bold text-2xl "> Dashboard</h2>
-                <Button>+ Create New</Button>
+
+                <Link href={'/dashboard/create-new'}> <Button className="mt-2 px-6 py-3 text-lg">+ Create New</Button></Link>
             </div>
 
             {videoList?.length == 0 && <div><EmptyState /></div>}

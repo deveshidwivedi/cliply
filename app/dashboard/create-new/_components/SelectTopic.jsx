@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
-function SelectTopic() {
+function SelectTopic({ onUserSelect }) {
     const options = [
         'Write Your Own',
         'AI’s Pick',
@@ -28,7 +28,11 @@ function SelectTopic() {
                 Content
             </h2>
             <p className="text-gray-500">What is the topic of your video?</p>
-            <Select onValueChange={(value) => setSelectedOption(value)}>
+            <Select onValueChange={(value) => {
+                setSelectedOption(value)
+                value != 'Write Your Own' && onUserSelect('topic', value)
+            }
+            }>
                 <SelectTrigger className="w-full mt-2 p-6 text-lg">
                     <SelectValue placeholder="Content Type" />
                 </SelectTrigger>
@@ -41,10 +45,11 @@ function SelectTopic() {
 
                 </SelectContent>
             </Select>
+            {selectedOption === 'Write Your Own' &&
+                <Textarea className="mt-3"
+                    onChange={(e) => onUserSelect('topic', e.target.value)}
+                    placeholder='Input your prompt' />}
 
-            {selectedOption == 'Write Your Own' &&
-                <Textarea />
-            }
         </div>
     )
 }

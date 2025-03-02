@@ -6,6 +6,9 @@ import SelectDuration from "./_components/SelectDuration";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 import CustomLoading from "./_components/CustomLoading";
+import { v4 as uuidv4 } from 'uuid';
+
+const scriptData = 'They say the old Blackwood Manor is cursed. Locals whisper tales of a tragic past and unexplained events. Sarah, drawn by the stories, could not resist its allure. Ignoring the warnings, she pushed the creaking door open.The air grew heavy, a chilling presence washing over her as she ventured deeper into the manors decaying heart. Suddenly, a flicker in the corner of her eye. A glimpse of something... or someone  in the reflection that should not be there. A bone-chilling whisper echoed through the hall, a voice barely audible, yet filled with unspeakable sorrow and dread. In the ballroom, she saw it. A spectral woman, forever trapped in a mournful waltz, a prisoner of the manors tragic history. Panic seized her. Sarah turned and fled, desperate to escape the Blackwood Manors suffocating embrace.  She escaped that night, forever haunted by what she witnessed. Blackwood Manor remains, a chilling reminder of the secrets that lie hidden within its walls... '
 
 function CreateNew() {
 
@@ -23,7 +26,8 @@ function CreateNew() {
     }
 
     const onCreateClickHandler = () => {
-        GetVideoScript();
+        //  GetVideoScript();
+        GenerateAudioFile(scriptData);
     }
 
     //get video script
@@ -38,6 +42,7 @@ function CreateNew() {
 
             console.log("API Response:", response.data.result);
             setVideoScript(response.data.result);
+            GenerateAudioFile(response.data.result);
 
             if (!response.data || !response.data.result) {
                 throw new Error("Invalid response format from API");
@@ -51,7 +56,24 @@ function CreateNew() {
         }
     };
 
+    const GenerateAudioFile = async (videoScriptData) => {
+        setLoading(true);
+        let script = '';
+        const id = uuidv4();
+        // videoScriptData.forEach(item => {
+        //     script += item.ContentText + ' ';
+        // })
 
+        await axios.post('/api/generate-audio', {
+            text: videoScriptData,
+            id: id
+        }).then(resp => {
+            console.log(resp.data);
+        }).finally(() => {
+            setLoading(false);
+        });
+
+    }
 
 
     return (

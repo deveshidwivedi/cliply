@@ -17,7 +17,7 @@ function CreateNew() {
                 {/* topic */}
                 <SelectTopic onUserSelect={onHandleInputChange} />
                 {/* select style */}
-                <SelectStyle />
+                <SelectStyle onUserSelect={onHandleInputChange} />
                 {/* Duration */}
 
                 {/* reate button  */}

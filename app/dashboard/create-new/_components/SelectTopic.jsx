@@ -27,7 +27,7 @@ function SelectTopic({ onUserSelect }) {
             <h2 className="font-bold text-2xl text-primary">
                 Content
             </h2>
-            <p className="text-gray-500">What is the topic of your video?</p>
+            <p className="text-gray-500">What's your video about?</p>
             <Select onValueChange={(value) => {
                 setSelectedOption(value)
                 value != 'Write Your Own' && onUserSelect('topic', value)

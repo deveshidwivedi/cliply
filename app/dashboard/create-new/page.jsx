@@ -5,10 +5,14 @@ import SelectStyle from "./_components/SelectStyle";
 import SelectDuration from "./_components/SelectDuration";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
+import CustomLoading from "./_components/CustomLoading";
 
 function CreateNew() {
 
     const [formData, setFormData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [videoScript, setVideoScript] = useState();
+
     const onHandleInputChange = (fieldName, fieldValue) => {
         console.log(fieldName, fieldValue);
 
@@ -24,6 +28,7 @@ function CreateNew() {
 
     //get video script
     const GetVideoScript = async () => {
+        setLoading(true);
         try {
             const prompt = `write a script to generate a ${formData.duration} seconds short video on the topic: ${formData.topic} along with AI image prompt in ${formData.imageStyle} format for each scene and give me result in JSON format with imagePrompt and ContentText as fields, no plain text`;
 
@@ -31,9 +36,9 @@ function CreateNew() {
 
             const response = await axios.post('/api/get-video-script', { prompt });
 
-            console.log("API Response:", response.data);
+            console.log("API Response:", response.data.result);
+            setVideoScript(response.data.result);
 
-            // Check if response contains expected data
             if (!response.data || !response.data.result) {
                 throw new Error("Invalid response format from API");
             }
@@ -41,8 +46,11 @@ function CreateNew() {
             return response.data.result;
         } catch (error) {
             console.error("❌ ERROR fetching video script:", error);
+        } finally {
+            setLoading(false);
         }
     };
+
 
 
 
@@ -59,6 +67,7 @@ function CreateNew() {
                 {/* create button  */}
                 <Button className="mt-10 w-full" onClick={onCreateClickHandler}>Create Short Video</Button>
             </div>
+            <CustomLoading loading={loading} />
         </div>
     )
 }

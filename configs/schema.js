@@ -1,4 +1,4 @@
-import { json } from "drizzle-orm/gel-core";
+import { json } from "drizzle-orm/pg-core";
 import { pgTable, varchar, serial, boolean } from "drizzle-orm/pg-core";
 
 export const Users = pgTable('users', {

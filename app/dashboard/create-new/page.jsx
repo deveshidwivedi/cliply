@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import SelectTopic from "./_components/SelectTopic";
 import SelectStyle from "./_components/SelectStyle";
 import SelectDuration from "./_components/SelectDuration";
@@ -7,22 +7,7 @@ import { Button } from "@/components/ui/button";
 import axios from "axios";
 import CustomLoading from "./_components/CustomLoading";
 import { v4 as uuidv4 } from 'uuid';
-
-const scriptData = 'They say the old Blackwood Manor is cursed. Locals whisper tales of a tragic past and unexplained events. Sarah, drawn by the stories, could not resist its allure. Ignoring the warnings, she pushed the creaking door open.The air grew heavy, a chilling presence washing over her as she ventured deeper into the manors decaying heart. Suddenly, a flicker in the corner of her eye. A glimpse of something... or someone  in the reflection that should not be there. A bone-chilling whisper echoed through the hall, a voice barely audible, yet filled with unspeakable sorrow and dread. In the ballroom, she saw it. A spectral woman, forever trapped in a mournful waltz, a prisoner of the manors tragic history. Panic seized her. Sarah turned and fled, desperate to escape the Blackwood Manors suffocating embrace.  She escaped that night, forever haunted by what she witnessed. Blackwood Manor remains, a chilling reminder of the secrets that lie hidden within its walls... '
-const FILEURL = 'https://firebasestorage.googleapis.com/v0/b/cliply-20f33.firebasestorage.app/o/cliply-video-files%2Fe341b216-e712-4ed6-9d28-3d6ba44748fa.mp3?alt=media&token=81ec2e0f-4e31-4227-a403-eb7551a73ede';
-
-const imageScript = [
-    [
-        {
-            "imagePrompt": "Exterior shot of a bustling Roman marketplace, circa 100 AD. People in togas buying and selling goods. Stalls overflowing with fruits, vegetables, pottery, and fabrics. Sunlight dappling through awnings. Realistic, highly detailed, 8k resolution, cinematic lighting.",
-            "contentText": "(Scene opens with a wide shot of the marketplace. Sounds of bartering and everyday life fill the air.) NARRATOR: 'Rome, 100 AD. The heart of a vast empire. A place of opportunity, intrigue... and unexpected turns.'"
-        },
-        {
-            "imagePrompt": "Close-up of a young Roman woman, 'Aurelia', carefully examining a bolt of crimson fabric. Her expression is thoughtful and intelligent. She is dressed in a simple but elegant toga. Realistic, high resolution, depth of field, golden hour lighting.",
-            "contentText": "(Camera focuses on Aurelia.) NARRATOR: 'Aurelia was a weaver, known for her skill and her sharp mind. She dreamed of opening her own shop, but lacked the funds.'"
-        }
-    ]
-]
+import { VideoDataContext } from "@/app/_context/VideoDataContext";
 
 function CreateNew() {
 
@@ -31,8 +16,8 @@ function CreateNew() {
     const [videoScript, setVideoScript] = useState();
     const [audioFileUrl, setAudioFileUrl] = useState();
     const [captions, setCaptions] = useState();
-    const [imageList, setImageList] = useState();
-
+    const [imageList, setImageList] = useState([]);
+    const { videoData, setVideoData } = useContext(VideoDataContext);
 
     const onHandleInputChange = (fieldName, fieldValue) => {
         console.log(fieldName, fieldValue);
@@ -44,10 +29,7 @@ function CreateNew() {
     }
 
     const onCreateClickHandler = () => {
-        //  GetVideoScript();
-        //  GenerateAudioFile(scriptData);
-        // GenerateAudioCaption(FILEURL);
-        GenerateImage(imageScript);
+        GetVideoScript();
     }
 
     //get video script
@@ -61,6 +43,12 @@ function CreateNew() {
             const response = await axios.post('/api/get-video-script', { prompt });
 
             console.log("API Response:", response.data.result);
+            if (response.data.result) {
+                setVideoData(prev => ({
+                    ...prev,
+                    'videoScript': response.data.result
+                }));
+            }
             setVideoScript(response.data.result);
             GenerateAudioFile(response.data.result);
 
@@ -76,27 +64,38 @@ function CreateNew() {
         }
     };
 
+    /**
+     * Generate Audio File and save to firebase storage
+     * @param {*} videoScriptData 
+     */
     const GenerateAudioFile = async (videoScriptData) => {
         setLoading(true);
-        let script = '';
         const id = uuidv4();
-        videoScriptData.forEach(item => {
-            script += item.ContentText + ' ';
-        })
+
+        // Extract text content from each scene
+        let scriptText = videoScriptData.map(item => item.ContentText).join(' ');
 
         await axios.post('/api/generate-audio', {
-            text: videoScriptData,
+            text: scriptText,  // ✅ Now it's a plain string
             id: id
         }).then(resp => {
             console.log(resp.data);
+            setVideoData(prev => ({
+                ...prev,
+                'audioFileUrl': resp.data.result
+            }));
             setAudioFileUrl(resp.data.result);
+            resp.data.result && GenerateAudioCaption(resp.data.result, videoScriptData);
         }).finally(() => {
             setLoading(false);
         });
-
     }
 
-    const GenerateAudioCaption = async (audioUrl) => {
+    /**
+     * generate caption from audio files
+     * @param {*} audioUrl 
+     */
+    const GenerateAudioCaption = async (audioUrl, videoScriptData) => {
         setLoading(true);
 
         await axios.post('/api/generate-caption', {
@@ -104,28 +103,34 @@ function CreateNew() {
         }).then(resp => {
             console.log(resp.data.result);
             setCaptions(resp?.data?.result);
-            GenerateImage();
+            setVideoData(prev => ({
+                ...prev,
+                'captions': resp.data.result
+            }));
+            resp.data.result && GenerateImage(videoScriptData);
         })
         console.log(videoScript, captions, audioFileUrl);
     }
 
-
-    const GenerateImage = async () => {
+    const GenerateImage = async (videoScriptData) => {
         setLoading(true);
         try {
-            const imagePromises = imageScript[0].map(async (scene) => {
+            const imagePromises = videoScriptData.map(async (scene) => {
                 const response = await axios.post('/api/generate-image', {
                     prompt: scene.imagePrompt
                 });
-
-                const imageUrl = response.data.imageUrl;
-                return imageUrl;
+                return response.data.imageUrl;
             });
 
             const images = await Promise.all(imagePromises);
 
-            console.log("Generated Images:", images);
+            // Update both local state and context
             setImageList(images);
+            setVideoData(prev => ({
+                ...prev,
+                'imageList': images // Pass the actual images array
+            }));
+
         } catch (error) {
             console.error("❌ ERROR generating images:", error);
         } finally {
@@ -133,7 +138,9 @@ function CreateNew() {
         }
     };
 
-
+    useEffect(() => {
+        console.log("Video Data:", videoData);
+    }, [videoData])
 
     return (
         <div className="md:px-20">

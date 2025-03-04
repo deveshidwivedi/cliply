@@ -10,6 +10,20 @@ import { v4 as uuidv4 } from 'uuid';
 
 const scriptData = 'They say the old Blackwood Manor is cursed. Locals whisper tales of a tragic past and unexplained events. Sarah, drawn by the stories, could not resist its allure. Ignoring the warnings, she pushed the creaking door open.The air grew heavy, a chilling presence washing over her as she ventured deeper into the manors decaying heart. Suddenly, a flicker in the corner of her eye. A glimpse of something... or someone  in the reflection that should not be there. A bone-chilling whisper echoed through the hall, a voice barely audible, yet filled with unspeakable sorrow and dread. In the ballroom, she saw it. A spectral woman, forever trapped in a mournful waltz, a prisoner of the manors tragic history. Panic seized her. Sarah turned and fled, desperate to escape the Blackwood Manors suffocating embrace.  She escaped that night, forever haunted by what she witnessed. Blackwood Manor remains, a chilling reminder of the secrets that lie hidden within its walls... '
 const FILEURL = 'https://firebasestorage.googleapis.com/v0/b/cliply-20f33.firebasestorage.app/o/cliply-video-files%2Fe341b216-e712-4ed6-9d28-3d6ba44748fa.mp3?alt=media&token=81ec2e0f-4e31-4227-a403-eb7551a73ede';
+
+const imageScript = [
+    [
+        {
+            "imagePrompt": "Exterior shot of a bustling Roman marketplace, circa 100 AD. People in togas buying and selling goods. Stalls overflowing with fruits, vegetables, pottery, and fabrics. Sunlight dappling through awnings. Realistic, highly detailed, 8k resolution, cinematic lighting.",
+            "contentText": "(Scene opens with a wide shot of the marketplace. Sounds of bartering and everyday life fill the air.) NARRATOR: 'Rome, 100 AD. The heart of a vast empire. A place of opportunity, intrigue... and unexpected turns.'"
+        },
+        {
+            "imagePrompt": "Close-up of a young Roman woman, 'Aurelia', carefully examining a bolt of crimson fabric. Her expression is thoughtful and intelligent. She is dressed in a simple but elegant toga. Realistic, high resolution, depth of field, golden hour lighting.",
+            "contentText": "(Camera focuses on Aurelia.) NARRATOR: 'Aurelia was a weaver, known for her skill and her sharp mind. She dreamed of opening her own shop, but lacked the funds.'"
+        }
+    ]
+]
+
 function CreateNew() {
 
     const [formData, setFormData] = useState([]);
@@ -17,6 +31,7 @@ function CreateNew() {
     const [videoScript, setVideoScript] = useState();
     const [audioFileUrl, setAudioFileUrl] = useState();
     const [captions, setCaptions] = useState();
+    const [imageList, setImageList] = useState();
 
 
     const onHandleInputChange = (fieldName, fieldValue) => {
@@ -31,7 +46,8 @@ function CreateNew() {
     const onCreateClickHandler = () => {
         //  GetVideoScript();
         //  GenerateAudioFile(scriptData);
-        GenerateAudioCaption(FILEURL);
+        // GenerateAudioCaption(FILEURL);
+        GenerateImage(imageScript);
     }
 
     //get video script
@@ -64,9 +80,9 @@ function CreateNew() {
         setLoading(true);
         let script = '';
         const id = uuidv4();
-        // videoScriptData.forEach(item => {
-        //     script += item.ContentText + ' ';
-        // })
+        videoScriptData.forEach(item => {
+            script += item.ContentText + ' ';
+        })
 
         await axios.post('/api/generate-audio', {
             text: videoScriptData,
@@ -87,11 +103,34 @@ function CreateNew() {
             audioFileUrl: audioUrl
         }).then(resp => {
             console.log(resp.data.result);
-            setCaptions(resp.data.result);
-        }).finally(() => {
-            setLoading(false);
-        });
+            setCaptions(resp?.data?.result);
+            GenerateImage();
+        })
+        console.log(videoScript, captions, audioFileUrl);
     }
+    const GenerateImage = async () => {
+        setLoading(true);
+        try {
+            const imagePromises = imageScript[0].map(async (scene) => {
+                const response = await axios.post('/api/generate-image', {
+                    prompt: scene.imagePrompt
+                });
+                // console.log("API Response:", response.data);
+
+                const imageUrl = response.data.photos[0]?.src?.original || "";
+                return imageUrl;
+            });
+
+            const images = await Promise.all(imagePromises);
+
+            console.log("Generated Images:", images);
+            setImageList(images);
+        } catch (error) {
+            console.error("❌ ERROR generating images:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     return (

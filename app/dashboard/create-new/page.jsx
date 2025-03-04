@@ -108,6 +108,8 @@ function CreateNew() {
         })
         console.log(videoScript, captions, audioFileUrl);
     }
+
+
     const GenerateImage = async () => {
         setLoading(true);
         try {
@@ -115,9 +117,8 @@ function CreateNew() {
                 const response = await axios.post('/api/generate-image', {
                     prompt: scene.imagePrompt
                 });
-                // console.log("API Response:", response.data);
 
-                const imageUrl = response.data.photos[0]?.src?.original || "";
+                const imageUrl = response.data.imageUrl;
                 return imageUrl;
             });
 
@@ -131,6 +132,7 @@ function CreateNew() {
             setLoading(false);
         }
     };
+
 
 
     return (

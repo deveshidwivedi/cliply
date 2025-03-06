@@ -13,6 +13,7 @@ import { useCallback } from "react";
 import { db } from "@/configs/db";
 import { VideoData } from "@/configs/schema";
 import PlayerDialog from "../_components/PlayerDialog";
+import { useRouter } from "next/navigation";
 
 function CreateNew() {
 
@@ -26,6 +27,7 @@ function CreateNew() {
     const { user } = useUser();
     const [playVideo, setPlayVideo] = useState(true);
     const [videoId, setVideoId] = useState(3);
+    const router = useRouter();
 
     const onHandleInputChange = (fieldName, fieldValue) => {
         console.log(fieldName, fieldValue);

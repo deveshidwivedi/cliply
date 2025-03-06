@@ -13,15 +13,17 @@ import RemotionVideo from "./RemotionVideo";
 import { VideoData } from "@/configs/schema";
 import { db } from "@/configs/db";
 import { eq } from "drizzle-orm";
+import { useRouter } from "next/navigation";
 
 function PlayerDialog({ playVideo, videoId }) {
 
     const [openDialog, setOpenDialog] = useState(false);
     const [videoData, setVideoData] = useState();
     const [durationInFrame, setDurationInFrame] = useState(100);
+    const router = useRouter();
 
     useEffect(() => {
-        setOpenDialog(playVideo)
+        setOpenDialog(!openDialog)
         videoId && GetVideoData();
     }, [playVideo])
 
@@ -54,7 +56,12 @@ function PlayerDialog({ playVideo, videoId }) {
 
                         />
                         <div className="flex gap-10 mt-10">
-                            <Button className="bg-red-400">Cancel</Button>
+                            <Button
+                                onClick={() => {
+                                    router.replace('/dashboard'); setOpenDialog(false)
+
+                                }}
+                                className="bg-red-400">Cancel</Button>
                             <Button>Export</Button>
                         </div>
                     </DialogDescription>

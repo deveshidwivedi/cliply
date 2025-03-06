@@ -12,6 +12,7 @@ import { useUser } from "@clerk/nextjs";
 import { useCallback } from "react";
 import { db } from "@/configs/db";
 import { VideoData } from "@/configs/schema";
+import PlayerDialog from "../_components/PlayerDialog";
 
 function CreateNew() {
 
@@ -23,6 +24,8 @@ function CreateNew() {
     const [imageList, setImageList] = useState([]);
     const { videoData, setVideoData } = useContext(VideoDataContext);
     const { user } = useUser();
+    const [playVideo, setPlayVideo] = useState(true);
+    const [videoId, setVideoId] = useState(3);
 
     const onHandleInputChange = (fieldName, fieldValue) => {
         console.log(fieldName, fieldValue);
@@ -153,6 +156,12 @@ function CreateNew() {
             imageList: videoData?.imageList,
             createdBy: user?.primaryEmailAddress?.emailAddress
         }).returning({ id: VideoData?.id })
+
+        setVideoId(result[0].id);
+        console.log("Updated videoId state:", result[0].id);
+
+        setPlayVideo(true);
+
         console.log(result);
         setLoading(false);
     }, [videoData, user]);
@@ -178,6 +187,7 @@ function CreateNew() {
                 <Button className="mt-10 w-full" onClick={onCreateClickHandler}>Create Short Video</Button>
             </div>
             <CustomLoading loading={loading} />
+            <PlayerDialog playVideo={playVideo} videoId={videoId} />
         </div>
     )
 }

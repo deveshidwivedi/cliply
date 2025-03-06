@@ -6,7 +6,7 @@ import { VideoDataContext } from "../_context/VideoDataContext";
 
 function DashboardLayout({ children }) {
 
-    const [videoData, setVideoData] = useState([]);
+    const [videoData, setVideoData] = useState({});
 
     return (
 

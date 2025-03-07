@@ -8,9 +8,12 @@ import { eq } from "drizzle-orm";
 import { useUser } from "@clerk/nextjs";
 import { db } from "@/configs/db";
 import VideoList from "./_components/VideoList";
+import { useContext } from "react";
+import { UserDetailContext } from "../_context/UserDetailContext";
 
 function Dashboard() {
     const [videoList, setVideoList] = useState([]);
+    const { userDetail, setUserDetail } = useContext(UserDetailContext);
     const { user } = useUser();
 
     useEffect(() => {

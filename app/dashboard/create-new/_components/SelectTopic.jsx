@@ -12,12 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 
 function SelectTopic({ onUserSelect }) {
     const options = [
-        'Write Your Own',
-        'AI’s Pick',
+        'Custom Prompt',
+        'Random Story',
         'Spooky Tale',
         'History Bites',
         'Sleepy Story',
-        'Get Inspired',
+        'Inspirational',
         'Did You Know?'
     ];
     const [selectedOption, setSelectedOption] = useState();

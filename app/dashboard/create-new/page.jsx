@@ -14,10 +14,13 @@ import { db } from "@/configs/db";
 import { VideoData } from "@/configs/schema";
 import PlayerDialog from "../_components/PlayerDialog";
 import { useRouter } from "next/navigation";
+import { UserDetailContext } from "@/app/_context/UserDetailContext";
+import { toast } from "sonner";
+import { Users } from "@/configs/schema";
+import { eq } from "drizzle-orm";
 
 function CreateNew() {
-
-    const [formData, setFormData] = useState([]); //might need {}
+    const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(false);
     const [videoScript, setVideoScript] = useState();
     const [audioFileUrl, setAudioFileUrl] = useState();
@@ -29,44 +32,43 @@ function CreateNew() {
     const [videoId, setVideoId] = useState(3);
     const router = useRouter();
 
-    const onHandleInputChange = (fieldName, fieldValue) => {
-        console.log(fieldName, fieldValue);
+    // Ensure context is correctly structured
+    const userContext = useContext(UserDetailContext);
+    const userDetail = userContext?.userDetail ?? {};
+    const setUserDetail = userContext?.setUserDetail ?? (() => { });
 
+    const onHandleInputChange = (fieldName, fieldValue) => {
         setFormData(prev => ({
             ...prev,
             [fieldName]: fieldValue
-        }))
-    }
+        }));
+    };
 
     const onCreateClickHandler = () => {
+        if (userDetail?.credits === undefined || userDetail.credits < 10) {
+            toast("You don't have enough credits!");
+            return;
+        }
         GetVideoScript();
-    }
+    };
 
-    //get video script
     const GetVideoScript = async () => {
         setLoading(true);
         try {
-            const prompt = `write a script to generate a ${formData.duration} seconds short video on the topic: ${formData.topic} along with AI image prompt in ${formData.imageStyle} format for each scene and give me result in JSON format with imagePrompt and ContentText as fields, no plain text`;
-
-            console.log("Generated Prompt:", prompt);
+            const prompt = `Write a script to generate a ${formData.duration} seconds short video on the topic: ${formData.topic} along with AI image prompt in ${formData.imageStyle} format for each scene and give me result in JSON format with imagePrompt and ContentText as fields.`;
 
             const response = await axios.post('/api/get-video-script', { prompt });
 
-            console.log("API Response:", response.data.result);
-            if (response.data.result) {
+            if (response.data?.result) {
                 setVideoData(prev => ({
                     ...prev,
-                    'videoScript': response.data.result
+                    videoScript: response.data.result
                 }));
-            }
-            setVideoScript(response.data.result);
-            GenerateAudioFile(response.data.result);
-
-            if (!response.data || !response.data.result) {
+                setVideoScript(response.data.result);
+                GenerateAudioFile(response.data.result);
+            } else {
                 throw new Error("Invalid response format from API");
             }
-
-            return response.data.result;
         } catch (error) {
             console.error("❌ ERROR fetching video script:", error);
         } finally {
@@ -74,53 +76,54 @@ function CreateNew() {
         }
     };
 
-    /**
-     * Generate Audio File and save to firebase storage
-     * @param {*} videoScriptData 
-     */
     const GenerateAudioFile = async (videoScriptData) => {
         setLoading(true);
         const id = uuidv4();
 
-        // Extract text content from each scene
         let scriptText = videoScriptData.map(item => item.ContentText).join(' ');
 
-        await axios.post('/api/generate-audio', {
-            text: scriptText,  // ✅ Now it's a plain string
-            id: id
-        }).then(resp => {
-            console.log(resp.data);
-            setVideoData(prev => ({
-                ...prev,
-                'audioFileUrl': resp.data.result
-            }));
-            setAudioFileUrl(resp.data.result);
-            resp.data.result && GenerateAudioCaption(resp.data.result, videoScriptData);
-        }).finally(() => {
-            setLoading(false);
-        });
-    }
+        try {
+            const resp = await axios.post('/api/generate-audio', {
+                text: scriptText,
+                id: id
+            });
 
-    /**
-     * generate caption from audio files
-     * @param {*} audioUrl 
-     */
+            if (resp.data?.result) {
+                setVideoData(prev => ({
+                    ...prev,
+                    audioFileUrl: resp.data.result
+                }));
+                setAudioFileUrl(resp.data.result);
+                GenerateAudioCaption(resp.data.result, videoScriptData);
+            }
+        } catch (error) {
+            console.error("❌ ERROR generating audio:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const GenerateAudioCaption = async (audioUrl, videoScriptData) => {
         setLoading(true);
+        try {
+            const resp = await axios.post('/api/generate-caption', {
+                audioFileUrl: audioUrl
+            });
 
-        await axios.post('/api/generate-caption', {
-            audioFileUrl: audioUrl
-        }).then(resp => {
-            console.log(resp.data.result);
-            setCaptions(resp?.data?.result);
-            setVideoData(prev => ({
-                ...prev,
-                'captions': resp.data.result
-            }));
-            resp.data.result && GenerateImage(videoScriptData);
-        })
-        console.log(videoScript, captions, audioFileUrl);
-    }
+            if (resp.data?.result) {
+                setCaptions(resp.data.result);
+                setVideoData(prev => ({
+                    ...prev,
+                    captions: resp.data.result
+                }));
+                GenerateImage(videoScriptData);
+            }
+        } catch (error) {
+            console.error("❌ ERROR generating captions:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const GenerateImage = async (videoScriptData) => {
         setLoading(true);
@@ -134,13 +137,11 @@ function CreateNew() {
 
             const images = await Promise.all(imagePromises);
 
-            // Update both local state and context
             setImageList(images);
             setVideoData(prev => ({
                 ...prev,
-                'imageList': images // Pass the actual images array
+                imageList: images
             }));
-
         } catch (error) {
             console.error("❌ ERROR generating images:", error);
         } finally {
@@ -151,46 +152,64 @@ function CreateNew() {
     const saveVideoData = useCallback(async () => {
         setLoading(true);
 
-        const result = await db.insert(VideoData).values({
-            script: videoData?.videoScript,
-            audioFileUrl: videoData?.audioFileUrl,
-            captions: videoData?.captions,
-            imageList: videoData?.imageList,
-            createdBy: user?.primaryEmailAddress?.emailAddress
-        }).returning({ id: VideoData?.id })
+        try {
+            const result = await db.insert(VideoData).values({
+                script: videoData?.videoScript,
+                audioFileUrl: videoData?.audioFileUrl,
+                captions: videoData?.captions,
+                imageList: videoData?.imageList,
+                createdBy: user?.primaryEmailAddress?.emailAddress
+            }).returning({ id: VideoData?.id });
 
-        setVideoId(result[0].id);
-        console.log("Updated videoId state:", result[0].id);
-
-        setPlayVideo(true);
-
-        console.log(result);
-        setLoading(false);
-    }, [videoData, user]);
+            await updateUserCredits();
+            setVideoId(result[0]?.id || videoId);
+            setPlayVideo(true);
+        } catch (error) {
+            console.error("❌ ERROR saving video data:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [videoData, user, videoId]);
 
     useEffect(() => {
-        console.log("Video Data:", videoData);
-        if (Object.keys(videoData).length == 4) {
+        if (Object.keys(videoData).length === 4) {
             saveVideoData();
         }
     }, [videoData, saveVideoData]);
 
+    const updateUserCredits = async () => {
+        try {
+            await db.update(Users).set({
+                credits: userDetail?.credits - 10
+            }).where(eq(Users.email, user?.primaryEmailAddress?.emailAddress));
+
+            setUserDetail(prev => ({
+                ...prev,
+                credits: (prev?.credits ?? 0) - 10
+            }));
+
+            setVideoData(null);
+        } catch (error) {
+            console.error("❌ ERROR updating user credits:", error);
+        }
+    };
+
     return (
         <div className="md:px-20">
-            <h2 className="font-bold text-4xl text-primary text-center"> Create new</h2>
+            <h2 className="font-bold text-4xl text-primary text-center">Create New</h2>
             <div className="mt-10 shadow-md p-10">
-                {/* topic */}
                 <SelectTopic onUserSelect={onHandleInputChange} />
-                {/* select style */}
                 <SelectStyle onUserSelect={onHandleInputChange} />
-                {/* Duration */}
                 <SelectDuration onUserSelect={onHandleInputChange} />
-                {/* create button  */}
-                <Button className="mt-10 w-full" onClick={onCreateClickHandler}>Create Short Video</Button>
+                <Button className="mt-10 w-full" onClick={onCreateClickHandler}>
+                    Create Short Video
+                </Button>
             </div>
             <CustomLoading loading={loading} />
-            <PlayerDialog playVideo={playVideo} videoId={videoId} />
+            <PlayerDialog playVideo={playVideo} setPlayVideo={setPlayVideo} videoId={videoId} />
+
         </div>
-    )
+    );
 }
-export default CreateNew
+
+export default CreateNew;

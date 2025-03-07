@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { UserButton } from "@clerk/nextjs";
@@ -7,6 +7,11 @@ import { UserDetailContext } from "@/app/_context/UserDetailContext";
 
 function Header() {
     const { userDetail, setUserDetail } = useContext(UserDetailContext);
+
+    useEffect(() => {
+        console.log("Updated credits in Header:", userDetail?.credits);
+    }, [userDetail?.credits]);
+
 
     return (
         <div className="p-3 px-5 flex items-center justify-between shadow-md">

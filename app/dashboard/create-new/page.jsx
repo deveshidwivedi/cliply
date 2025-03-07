@@ -28,8 +28,8 @@ function CreateNew() {
     const [imageList, setImageList] = useState([]);
     const { videoData, setVideoData } = useContext(VideoDataContext);
     const { user } = useUser();
-    const [playVideo, setPlayVideo] = useState(true);
-    const [videoId, setVideoId] = useState(3);
+    const [playVideo, setPlayVideo] = useState(false);
+    const [videoId, setVideoId] = useState(null);
     const router = useRouter();
 
     // Ensure context is correctly structured
@@ -55,6 +55,7 @@ function CreateNew() {
     const GetVideoScript = async () => {
         setLoading(true);
         try {
+            // Fixed template string syntax with backticks
             const prompt = `Write a script to generate a ${formData.duration} seconds short video on the topic: ${formData.topic} along with AI image prompt in ${formData.imageStyle} format for each scene and give me result in JSON format with imagePrompt and ContentText as fields.`;
 
             const response = await axios.post('/api/get-video-script', { prompt });
@@ -71,18 +72,16 @@ function CreateNew() {
             }
         } catch (error) {
             console.error("❌ ERROR fetching video script:", error);
-        } finally {
+            toast.error("Failed to generate video script");
             setLoading(false);
         }
     };
 
     const GenerateAudioFile = async (videoScriptData) => {
-        setLoading(true);
-        const id = uuidv4();
-
-        let scriptText = videoScriptData.map(item => item.ContentText).join(' ');
-
         try {
+            const id = uuidv4();
+            let scriptText = videoScriptData.map(item => item.ContentText).join(' ');
+
             const resp = await axios.post('/api/generate-audio', {
                 text: scriptText,
                 id: id
@@ -95,16 +94,17 @@ function CreateNew() {
                 }));
                 setAudioFileUrl(resp.data.result);
                 GenerateAudioCaption(resp.data.result, videoScriptData);
+            } else {
+                throw new Error("Invalid response from audio generation API");
             }
         } catch (error) {
             console.error("❌ ERROR generating audio:", error);
-        } finally {
+            toast.error("Failed to generate audio");
             setLoading(false);
         }
     };
 
     const GenerateAudioCaption = async (audioUrl, videoScriptData) => {
-        setLoading(true);
         try {
             const resp = await axios.post('/api/generate-caption', {
                 audioFileUrl: audioUrl
@@ -117,16 +117,17 @@ function CreateNew() {
                     captions: resp.data.result
                 }));
                 GenerateImage(videoScriptData);
+            } else {
+                throw new Error("Invalid response from caption generation API");
             }
         } catch (error) {
             console.error("❌ ERROR generating captions:", error);
-        } finally {
+            toast.error("Failed to generate captions");
             setLoading(false);
         }
     };
 
     const GenerateImage = async (videoScriptData) => {
-        setLoading(true);
         try {
             const imagePromises = videoScriptData.map(async (scene) => {
                 const response = await axios.post('/api/generate-image', {
@@ -144,53 +145,74 @@ function CreateNew() {
             }));
         } catch (error) {
             console.error("❌ ERROR generating images:", error);
+            toast.error("Failed to generate images");
         } finally {
             setLoading(false);
         }
     };
 
     const saveVideoData = useCallback(async () => {
+        if (!videoData?.videoScript || !videoData?.audioFileUrl ||
+            !videoData?.captions || !videoData?.imageList ||
+            !user?.primaryEmailAddress?.emailAddress) {
+            console.error("Missing required data for saving video");
+            return;
+        }
+
         setLoading(true);
 
         try {
             const result = await db.insert(VideoData).values({
-                script: videoData?.videoScript,
-                audioFileUrl: videoData?.audioFileUrl,
-                captions: videoData?.captions,
-                imageList: videoData?.imageList,
-                createdBy: user?.primaryEmailAddress?.emailAddress
-            }).returning({ id: VideoData?.id });
+                script: videoData.videoScript,
+                audioFileUrl: videoData.audioFileUrl,
+                captions: videoData.captions,
+                imageList: videoData.imageList,
+                createdBy: user.primaryEmailAddress.emailAddress
+            }).returning({ id: VideoData.id });
 
             await updateUserCredits();
-            setVideoId(result[0]?.id || videoId);
-            setPlayVideo(true);
+
+            if (result && result[0]?.id) {
+                setVideoId(result[0].id);
+                setPlayVideo(true);
+            } else {
+                throw new Error("Failed to get video ID from database");
+            }
         } catch (error) {
             console.error("❌ ERROR saving video data:", error);
+            toast.error("Failed to save video data");
         } finally {
             setLoading(false);
         }
-    }, [videoData, user, videoId]);
+    }, [videoData, user]);
 
     useEffect(() => {
-        if (Object.keys(videoData).length === 4) {
+        if (videoData?.videoScript && videoData?.audioFileUrl &&
+            videoData?.captions && videoData?.imageList) {
             saveVideoData();
         }
     }, [videoData, saveVideoData]);
 
     const updateUserCredits = async () => {
         try {
+            if (!user?.primaryEmailAddress?.emailAddress) {
+                throw new Error("User email not available");
+            }
+
             await db.update(Users).set({
-                credits: userDetail?.credits - 10
-            }).where(eq(Users.email, user?.primaryEmailAddress?.emailAddress));
+                credits: (userDetail?.credits || 0) - 10
+            }).where(eq(Users.email, user.primaryEmailAddress.emailAddress));
 
             setUserDetail(prev => ({
                 ...prev,
                 credits: (prev?.credits ?? 0) - 10
             }));
 
-            setVideoData(null);
+            // Only clear videoData after successful update
+            setVideoData({});
         } catch (error) {
             console.error("❌ ERROR updating user credits:", error);
+            toast.error("Failed to update user credits");
         }
     };
 
@@ -201,13 +223,22 @@ function CreateNew() {
                 <SelectTopic onUserSelect={onHandleInputChange} />
                 <SelectStyle onUserSelect={onHandleInputChange} />
                 <SelectDuration onUserSelect={onHandleInputChange} />
-                <Button className="mt-10 w-full" onClick={onCreateClickHandler}>
-                    Create Short Video
+                <Button
+                    className="mt-10 w-full"
+                    onClick={onCreateClickHandler}
+                    disabled={loading || !formData.topic || !formData.imageStyle || !formData.duration}
+                >
+                    {loading ? "Creating..." : "Create Short Video"}
                 </Button>
             </div>
             <CustomLoading loading={loading} />
-            <PlayerDialog playVideo={playVideo} setPlayVideo={setPlayVideo} videoId={videoId} />
-
+            {videoId && (
+                <PlayerDialog
+                    playVideo={playVideo}
+                    setPlayVideo={setPlayVideo}
+                    videoId={videoId}
+                />
+            )}
         </div>
     );
 }

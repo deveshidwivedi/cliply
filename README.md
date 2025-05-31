@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Cliply - AI Short Video Generator
+
+Cliply is an AI-powered web application that lets you generate short, engaging videos using different themes, styles, and durations. Leveraging the Gemini API for script generation, Cliply combines AI-generated scripts, voiceovers, captions, and themed images to create unique short videos in just a few clicks.
+
+## Features
+
+- Generate short videos on a variety of topics and themes
+- Choose from multiple visual styles (Photorealistic, Cartoonish, Comic Book, Watercolor, GTA Art Style, and more)
+- AI-generated scripts using Google Gemini API
+- Automatic image generation and selection
+- AI voiceover and captioning
+- User authentication and video history
+- Fast, serverless backend with Next.js, Drizzle ORM, and Firebase Storage
+
+## Tech Stack
+
+- **Next.js** (App Router)
+- **React** (Client Components)
+- **Google Gemini API** (Script generation)
+- **AssemblyAI** (Audio captioning)
+- **Google Cloud Text-to-Speech** (Voiceover)
+- **Pexels API** (Image sourcing)
+- **Firebase Storage** (Media storage)
+- **Drizzle ORM + NeonDB** (Database)
+- **Clerk** (Authentication)
+- **Remotion** (Video rendering)
+- **Tailwind CSS** (Styling)
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the repository:**
+   ```sh
+   git clone https://github.com/yourusername/cliply.git
+   cd cliply
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Install dependencies:**
+   ```sh
+   npm install
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Set up environment variables:**
+   Create a `.env.local` file and add your API keys and config:
+   ```
+   NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
+   NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+   NEXT_PUBLIC_DRIZZLE_URL=your_neon_db_url
+   GOOGLE_API_KEY=your_google_cloud_api_key
+   CAPTION_API=your_assemblyai_api_key
+   PEXELS_API_KEY=your_pexels_api_key
+   ```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+4. **Run the development server:**
+   ```sh
+   npm run dev
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+5. **Open [http://localhost:3000](http://localhost:3000) in your browser.**
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Sign up or log in with your account.
+- Choose a topic, style, and duration for your video.
+- Click "Create Short Video" and let the AI do the rest!
+- Preview, download, or share your generated videos from your dashboard.
